@@ -1,3 +1,29 @@
+// First set of flags indicating file format; highly speculative.
+const FormatFlags1 = enum(u8) {
+    None = 0, // No flags set.
+    Flag01 = 0b0000_0001, // Unknown.
+    IntDataOffset = 0b0000_0010, // Expanded header with 32-bit data offset.
+    LongDataOffset = 0b0000_0100, // Expanded header with 64-bit data offset.
+    Flag08 = 0b0000_1000, // Unused?
+    Flag10 = 0b0001_0000, // Unused?
+    Flag20 = 0b0010_0000, // Unused?
+    Flag40 = 0b0100_0000, // Unused?
+    OffsetParamType = 0b1000_0000, // Param type string is written separately instead of fixed-width in the header.
+};
+
+// Second set of flags indicating file format; highly speculative.
+const FormatFlags2 = enum(u8) {
+    None = 0, // No flags set.
+    UnicodeRowNames = 0b0000_0001, // Row names are written as UTF-16.
+    Flag02 = 0b0000_0010, // Unknown.
+    Flag04 = 0b0000_0100, // Unknown.
+    Flag08 = 0b0000_1000, // Unknown.
+    Flag10 = 0b0001_0000, // Unused?
+    Flag20 = 0b0010_0000, // Unused?
+    Flag40 = 0b0100_0000, // Unused?
+    Flag80 = 0b1000_0000, // Unused?
+};
+
 // Flags that control editor behavior for a field.
 const EditFlag = enum(u8) {
     None = 0, // Value is editable and does not wrap.
@@ -18,12 +44,12 @@ const DefType = union {
     angle: f32,
     f64: f64,
     dummy: []u8,
-    // fixstr: []u8, // Fixed-width Shift-JIS string.
-    // fixstrW: []u8 // Fixed-width UTF-16 string.
+    fixstr: []u8, // Fixed-width Shift-JIS string.
+    fixstrW: []u16, // Fixed-width UTF-16 string.
 };
 
 // Information about a field present in each row in a param.
-const Field = struct {
+const Field = packed struct {
     displayname: []u8, // Name to display in the editor.
     displayType: DefType, // Type of value to display in the editor.
     displayFormat: []u8, // Printf-style format string to apply to the value in the editor.
@@ -44,13 +70,13 @@ const Field = struct {
 };
 
 // One cell in one row in a param.
-const Cell = struct {
+const Cell = packed struct {
     def: Field, // The paramdef field that describes this cell.
     value: DefType, // The value of this cell.
 };
 
 // One row in a param file.
-const Row = struct {
+const Row = packed struct {
     id: i32, // The ID number of this row.
     name: []u8, // A name given to this row; no functional significance, may be null.
     cells: []Cell, // Cells contained in this row.
@@ -58,7 +84,7 @@ const Row = struct {
 };
 
 // A general-purpose configuration file used throughout the series.
-const PARAM = struct {
+const PARAM = packed struct {
     bigEndian: bool, // Whether the file is big-endian; true for PS3/360 files, false otherwise.
     // Format2D: FormatFlags1 // Flags indicating format of the file.
     // Format2E: FormatFlags2 // More flags indicating format of the file.
@@ -72,7 +98,7 @@ const PARAM = struct {
 };
 
 // A companion format to params that describes each field present in the rows. Extension: .def, .paramdef
-const PARAMDEF = struct {
+const PARAMDEF = packed struct {
     dataVersion: i16, // Indicates a revision of the row data structure.
     paramType: []u8, // Identifies corresponding params and paramdefs.
     bigEndian: bool, // True for PS3 and X360 games, otherwise false.
@@ -88,21 +114,4 @@ const PARAMDEF = struct {
     formatVersion: i16, // Determines format of the file.
     variableEditorValueTypes: bool = .formatVersion >= 203, // Whether field default, minimum, maximum, and increment may be variable type. If false, they are always floats.
     fields: []Field, // Fields in each param row, in order of appearance.
-
-    pub fn Create() PARAMDEF {
-        var def: PARAMDEF = undefined;
-        def.paramType = "";
-        def.formatVersion = 104;
-        def.fields = undefined;
-        return def;
-    }
 };
-
-test "paramdef" {
-    const std = @import("std");
-    const expect = std.testing.expect;
-
-    const def: PARAMDEF = PARAMDEF.Create();
-
-    try expect(def.formatVersion == 104);
-}
