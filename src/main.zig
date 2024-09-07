@@ -20,6 +20,7 @@ pub fn main() !void {
     var reader = formats.Reader.init(buf);
     const header = try reader.read(formats.DCX_HEADER);
     const bytes = try reader.readRestAsBytes();
-    std.debug.print("{}\n", .{header});
-    std.debug.print("{any}\n", .{bytes});
+
+    const dcx: formats.DCX = .{ .header = header, .bytes = bytes };
+    std.debug.print("{any}\n", .{dcx});
 }

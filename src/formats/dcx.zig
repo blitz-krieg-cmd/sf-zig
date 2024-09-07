@@ -27,5 +27,5 @@ pub const HEADER = extern struct {
 
 pub const DCX = struct {
     header: HEADER,
-    bytes: []u8,
+    bytes: []const u8,
 };
