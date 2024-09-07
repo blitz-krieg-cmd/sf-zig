@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const formats = @import("formats.zig");
+const formats = @import("sf.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -17,8 +17,9 @@ pub fn main() !void {
     const buf = try file.readToEndAlloc(allocator, try file.getEndPos());
     defer allocator.free(buf);
 
-    var stream = std.io.fixedBufferStream(buf);
-    const dcx = try stream.reader().readStruct(formats.DCX);
-
-    _ = dcx;
+    var reader = formats.Reader.init(buf);
+    const header = try reader.read(formats.DCX_HEADER);
+    const bytes = try reader.readRestAsBytes();
+    std.debug.print("{}\n", .{header});
+    std.debug.print("{any}\n", .{bytes});
 }

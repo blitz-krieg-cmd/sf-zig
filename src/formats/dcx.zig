@@ -1,12 +1,5 @@
 const std = @import("std");
 
-pub const Block = extern struct {
-    unk00: i32, // 0
-    dataOffset: i32,
-    dataLength: i32,
-    unk0C: i32, // 1
-};
-
 pub const HEADER = extern struct {
     dcx: [4]u8, // DCX\0
     unk04: i32, // 0x10000 || 0x11000
@@ -30,29 +23,9 @@ pub const HEADER = extern struct {
     unk40: i32,
     dca: [4]u8, // DCA\0
     dcaSize: i32, // From before "DCA" to dca end
-
-    // EDGE
-    egdt: [4]u8, // EgdT
-    unk50: i32, // 0x10100
-    unk54: i32, // 0x24
-    unk58: i32, // 0x10
-    unk5C: i32, // x10000
-    lastBlockUncompressedSize: i32,
-    egdtSize: i32, // From before "EgdT" to dca end
-    blockCount: i32,
-    unk6C: i32, // Assert(unk6C == 0x100000);
-    blocks: []Block,
-
-    pub fn read_data() void {}
-
-    pub fn ensure_type(self: *const HEADER) bool {
-        if (std.mem.eql(u8, &self.dcx, "DCX\x00") or std.mem.eql(u8, &self.dcx, "DCP\x00")) {
-            return true;
-        }
-        return false;
-    }
 };
 
-pub const DCX = extern struct {
+pub const DCX = struct {
     header: HEADER,
+    bytes: []u8,
 };
