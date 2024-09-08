@@ -1,8 +1,8 @@
 const std = @import("std");
-
 const formats = @import("sf.zig");
 
 pub fn main() !void {
+    // allocator
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer {
@@ -10,17 +10,16 @@ pub fn main() !void {
         //fail test; can't try in defer as defer is executed after we return
         if (deinit_status == .leak) std.testing.expect(false) catch @panic("TEST FAIL");
     }
-
-    var file = try std.fs.openFileAbsolute("E:/SteamLibrary/steamapps/common/DARK SOULS REMASTERED/menu/ENGLISH/menu_local.tpf.dcx", .{ .mode = .read_only });
+    // file work
+    var file = try std.fs.openFileAbsolute("E:/SteamLibrary/steamapps/common/DARK SOULS REMASTERED/param/GameParam/GameParam.parambnd.dcx", .{ .mode = .read_only });
     defer file.close();
 
-    const buf = try file.readToEndAlloc(allocator, try file.getEndPos());
-    defer allocator.free(buf);
+    // file into buffer
+    const fileBytes = try file.readToEndAlloc(allocator, try file.getEndPos());
+    defer allocator.free(fileBytes);
 
-    var reader = formats.Reader.init(buf);
-    const header = try reader.read(formats.DCX_HEADER);
-    const bytes = try reader.readRestAsBytes();
+    const dcx = try formats.ReadDCX(fileBytes);
+    const bnd = try formats.ReadBND3(dcx.decompressedBytes);
 
-    const dcx: formats.DCX = .{ .header = header, .bytes = bytes };
-    std.debug.print("{any}\n", .{dcx});
+    std.debug.print("{b}\n", .{@bitReverse(bnd.header.format)});
 }

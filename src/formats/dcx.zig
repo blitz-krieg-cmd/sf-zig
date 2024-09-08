@@ -1,7 +1,8 @@
 const std = @import("std");
+const Reader = @import("../sf.zig").Reader;
 
 pub const HEADER = extern struct {
-    dcx: [4]u8, // DCX\0
+    magic: [4]u8, // DCX\0
     unk04: i32, // 0x10000 || 0x11000
     dcsOffset: i32, // 0x18
     dcpOffset: i32, // 0x24
@@ -27,5 +28,34 @@ pub const HEADER = extern struct {
 
 pub const DCX = struct {
     header: HEADER,
-    bytes: []const u8,
+    decompressedBytes: []const u8,
+    lengthOfBytes: usize,
 };
+
+pub fn read(bytes: []const u8) !DCX {
+    // reader from buffer
+    var reader = Reader.init(bytes);
+    const header = try reader.read(HEADER);
+    const compressedBytes = try reader.readRestAsBytes();
+
+    // stream reader from reader
+    var stream = std.io.fixedBufferStream(compressedBytes[0..]);
+    const sreader = stream.reader();
+
+    // decompressor reader from stream reader
+    var dcp = std.compress.zlib.decompressor(sreader);
+
+    // TODO: this is shit, need to work with getting this to be a variable length with header.uncompressedSize
+    var decompressedBytes: [8000000]u8 = undefined;
+
+    // decompressed data read from decompressor reader
+    const decompressedBytesLength = try dcp.reader().readAll(decompressedBytes[0..]);
+
+    const dcx: DCX = .{
+        .header = header,
+        .decompressedBytes = decompressedBytes[0..decompressedBytesLength],
+        .lengthOfBytes = decompressedBytesLength,
+    };
+
+    return dcx;
+}
