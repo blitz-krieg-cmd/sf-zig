@@ -31,14 +31,14 @@ pub const DCX = struct {
     uncompressedBytes: []const u8,
 };
 
-pub fn read(bytes: []const u8, allocator: *const std.mem.Allocator) !DCX {
+pub fn read(bytes: []const u8, allocator: std.mem.Allocator) !DCX {
     var fbs = std.io.fixedBufferStream(bytes);
     var reader = fbs.reader();
     const header = try reader.readStruct(HEADER);
 
     var dcp = std.compress.zlib.decompressor(reader);
-    const uncompressedBytes = try dcp.reader().readAllAlloc(allocator.*, header.uncompressedSize);
-    defer allocator.free(uncompressedBytes);
+    const uncompressedBytes = try dcp.reader().readAllAlloc(allocator, header.uncompressedSize);
+    errdefer allocator.free(uncompressedBytes);
 
     const dcx: DCX = .{
         .header = header,
@@ -46,4 +46,26 @@ pub fn read(bytes: []const u8, allocator: *const std.mem.Allocator) !DCX {
     };
 
     return dcx;
+}
+
+test "dcx" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    var file = try std.fs.openFileAbsolute("E:/SteamLibrary/steamapps/common/DARK SOULS REMASTERED/param/GameParam/GameParam.parambnd.dcx", .{ .mode = .read_only });
+    defer file.close();
+
+    const fileBytes = try file.readToEndAlloc(allocator, try file.getEndPos());
+    defer allocator.free(fileBytes);
+
+    const dcx = try read(fileBytes, allocator);
+
+    try std.testing.expect(std.mem.eql(u8, &dcx.header.magic, "DCX\x00"));
+    try std.testing.expect(std.mem.eql(u8, &dcx.header.format, "DFLT"));
+    try std.testing.expect(std.mem.eql(u8, &dcx.header.dcs, "DCS\x00"));
+    try std.testing.expect(std.mem.eql(u8, &dcx.header.dcp, "DCP\x00"));
+    try std.testing.expect(std.mem.eql(u8, &dcx.header.dca, "DCA\x00"));
+
+    try std.testing.expect(dcx.uncompressedBytes.len > 0);
 }

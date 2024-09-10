@@ -48,17 +48,41 @@ pub const BND3 = struct {
     bytes: []const u8,
 };
 
-pub fn read(bytes: []const u8, allocator: *const std.mem.Allocator) !BND3 {
+pub fn read(bytes: []const u8, allocator: std.mem.Allocator) !BND3 {
     var fbs = std.io.fixedBufferStream(bytes);
     var reader = fbs.reader();
     const header = try reader.readStruct(HEADER);
 
-    const remainingBytes = try reader.readAllAlloc(allocator.*, bytes.len);
+    const remainingBytes = try reader.readAllAlloc(allocator, bytes.len);
+    defer allocator.free(remainingBytes);
 
     const bnd: BND3 = .{
         .header = header,
-        .bytes = remainingBytes,
+        .bytes = remainingBytes[0..],
     };
 
     return bnd;
+}
+
+test "bnd" {
+    const DCX = @import("dcx.zig");
+
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    var file = try std.fs.openFileAbsolute("E:/SteamLibrary/steamapps/common/DARK SOULS REMASTERED/param/GameParam/GameParam.parambnd.dcx", .{ .mode = .read_only });
+    defer file.close();
+
+    const fileBytes = try file.readToEndAlloc(allocator, try file.getEndPos());
+    defer allocator.free(fileBytes);
+
+    const dcx = try DCX.read(fileBytes, allocator);
+    const bnd = try read(dcx.uncompressedBytes, allocator);
+
+    try std.testing.expect(std.mem.eql(u8, &bnd.header.magic, "BND3"));
+    try std.testing.expect(bnd.header.bigEndian == 0 or bnd.header.bigEndian == 1);
+    try std.testing.expect(bnd.header.bitBigEndian == 0 or bnd.header.bitBigEndian == 1);
+
+    try std.testing.expect(dcx.uncompressedBytes.len > 0);
 }
