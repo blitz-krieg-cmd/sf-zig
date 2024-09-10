@@ -10,6 +10,7 @@ pub fn main() !void {
         //fail test; can't try in defer as defer is executed after we return
         if (deinit_status == .leak) std.testing.expect(false) catch @panic("TEST FAIL");
     }
+
     // file work
     var file = try std.fs.openFileAbsolute("E:/SteamLibrary/steamapps/common/DARK SOULS REMASTERED/param/GameParam/GameParam.parambnd.dcx", .{ .mode = .read_only });
     defer file.close();
@@ -18,8 +19,8 @@ pub fn main() !void {
     const fileBytes = try file.readToEndAlloc(allocator, try file.getEndPos());
     defer allocator.free(fileBytes);
 
-    const dcx = try formats.ReadDCX(fileBytes);
-    const bnd = try formats.ReadBND3(dcx.decompressedBytes);
+    const dcx = try formats.ReadDCX(fileBytes, &allocator);
+    const bnd = try formats.ReadBND3(dcx.uncompressedBytes, &allocator);
 
-    std.debug.print("{b}\n", .{@bitReverse(bnd.header.format)});
+    std.debug.print("{c}\n", .{bnd.header.magic});
 }

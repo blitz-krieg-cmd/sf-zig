@@ -28,33 +28,21 @@ pub const HEADER = extern struct {
 
 pub const DCX = struct {
     header: HEADER,
-    decompressedBytes: []const u8,
-    lengthOfBytes: usize,
+    uncompressedBytes: []const u8,
 };
 
-pub fn read(bytes: []const u8) !DCX {
-    // reader from buffer
-    var reader = Reader.init(bytes);
-    const header = try reader.read(HEADER);
-    const compressedBytes = try reader.readRestAsBytes();
+pub fn read(bytes: []const u8, allocator: *const std.mem.Allocator) !DCX {
+    var fbs = std.io.fixedBufferStream(bytes);
+    var reader = fbs.reader();
+    const header = try reader.readStruct(HEADER);
 
-    // stream reader from reader
-    var stream = std.io.fixedBufferStream(compressedBytes[0..]);
-    const sreader = stream.reader();
-
-    // decompressor reader from stream reader
-    var dcp = std.compress.zlib.decompressor(sreader);
-
-    // TODO: this is shit, need to work with getting this to be a variable length with header.uncompressedSize
-    var decompressedBytes: [8000000]u8 = undefined;
-
-    // decompressed data read from decompressor reader
-    const decompressedBytesLength = try dcp.reader().readAll(decompressedBytes[0..]);
+    var dcp = std.compress.zlib.decompressor(reader);
+    const uncompressedBytes = try dcp.reader().readAllAlloc(allocator.*, header.uncompressedSize);
+    defer allocator.free(uncompressedBytes);
 
     const dcx: DCX = .{
         .header = header,
-        .decompressedBytes = decompressedBytes[0..decompressedBytesLength],
-        .lengthOfBytes = decompressedBytesLength,
+        .uncompressedBytes = uncompressedBytes[0..],
     };
 
     return dcx;

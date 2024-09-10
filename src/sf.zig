@@ -4,6 +4,3 @@ pub const ReadBND3 = @import("formats/bnd.zig").read;
 pub const BND = @import("formats/bnd.zig");
 pub const PARAM = @import("formats/param.zig").PARAM;
 pub const PARAMDEF = @import("formats/param.zig").PARAMDEF;
-
-// Utils
-pub const Reader = @import("formats/reader.zig").Reader;

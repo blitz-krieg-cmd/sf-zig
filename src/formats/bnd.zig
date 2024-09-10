@@ -1,5 +1,4 @@
 const std = @import("std");
-const Reader = @import("../sf.zig").Reader;
 
 // Minimal file information.
 pub const None = 0;
@@ -46,26 +45,20 @@ pub const HEADER = extern struct {
 
 pub const BND3 = struct {
     header: HEADER,
-    endian: std.builtin.Endian,
-    //files: []File,
+    bytes: []const u8,
 };
 
-pub fn read(bytes: []const u8) !BND3 {
-    // reader from buffer
-    var reader = Reader.init(bytes);
-    const header = try reader.read(HEADER);
-    //const fileBytes = try reader.readRestAsBytes();
+pub fn read(bytes: []const u8, allocator: *const std.mem.Allocator) !BND3 {
+    var fbs = std.io.fixedBufferStream(bytes);
+    var reader = fbs.reader();
+    const header = try reader.readStruct(HEADER);
+
+    const remainingBytes = try reader.readAllAlloc(allocator.*, bytes.len);
 
     const bnd: BND3 = .{
         .header = header,
-        .endian = std.builtin.Endian.big,
-        //.files = readFiles(fileBytes),
+        .bytes = remainingBytes,
     };
 
     return bnd;
 }
-
-// pub fn readFiles(bytes: []const u8) ![]File {
-//     const size = @sizeOf(File);
-
-// }
