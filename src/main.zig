@@ -39,5 +39,5 @@ pub fn main() !void {
     const dcx = try formats.ReadDCX(fileBytes, allocator);
     const bnd = try formats.ReadBND3(dcx.uncompressedBytes, allocator);
 
-    std.log.info("{c}\n", .{bnd.header.magic});
+    std.log.info("{c}", .{bnd.header.magic});
 }
