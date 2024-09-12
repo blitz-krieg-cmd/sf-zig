@@ -24,9 +24,14 @@ pub const File = extern struct {
     unk01: u8,
     unk02: u8,
     unk03: u8,
-    flags: u8,
-    compressedSize: i32,
-    dataOffsetL: u32,
+    compressedSize: u32, // actually an i32 but we dont have negative size
+    dataOffset: u32,
+    uncompressedSize: i32,
+};
+
+pub const BNDFile = struct {
+    file: File,
+    bytes: []u8,
 };
 
 pub const HEADER = extern struct {
@@ -36,7 +41,6 @@ pub const HEADER = extern struct {
     bigEndian: i8, // 0 | 1
     bitBigEndian: i8, //  0 | 1
     unk0F: i8, // 0
-    format: u8,
     fileCount: i32,
     fileHeadersEnd: i32, // Does not include padding before data starts
     unk18: i32,
@@ -45,7 +49,7 @@ pub const HEADER = extern struct {
 
 pub const BND3 = struct {
     header: HEADER,
-    bytes: []const u8,
+    files: []BNDFile,
 };
 
 pub fn read(bytes: []const u8, allocator: std.mem.Allocator) !BND3 {
@@ -53,36 +57,43 @@ pub fn read(bytes: []const u8, allocator: std.mem.Allocator) !BND3 {
     var reader = fbs.reader();
     const header = try reader.readStruct(HEADER);
 
-    const remainingBytes = try reader.readAllAlloc(allocator, bytes.len);
-    defer allocator.free(remainingBytes);
+    var arrayList = std.ArrayList(BNDFile).init(allocator);
+    var readFiles: i32 = 0;
+    while (readFiles < header.fileCount - 1) {
+        const fileHeader = try reader.readStruct(File);
+
+        if (fileHeader.compressedSize < 0) {
+            continue;
+        }
+
+        std.log.debug("Offset: {any} | Size: {any}", .{ fileHeader.dataOffset, fileHeader.compressedSize });
+        const file: BNDFile = .{
+            .file = fileHeader,
+            .bytes = undefined,
+        };
+        try arrayList.append(file);
+        readFiles += 1;
+    }
+
+    var endian: std.builtin.Endian = .little;
+    if (header.bigEndian == 1 or header.rawFormat & BigEndian == 1) {
+        endian = .big;
+    }
 
     const bnd: BND3 = .{
         .header = header,
-        .bytes = remainingBytes[0..],
+        .files = try arrayList.toOwnedSlice(),
     };
+
+    try verify(bnd);
 
     return bnd;
 }
 
-test "bnd" {
-    const DCX = @import("dcx.zig");
-
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
-
-    var file = try std.fs.openFileAbsolute("E:/SteamLibrary/steamapps/common/DARK SOULS REMASTERED/param/GameParam/GameParam.parambnd.dcx", .{ .mode = .read_only });
-    defer file.close();
-
-    const fileBytes = try file.readToEndAlloc(allocator, try file.getEndPos());
-    defer allocator.free(fileBytes);
-
-    const dcx = try DCX.read(fileBytes, allocator);
-    const bnd = try read(dcx.uncompressedBytes, allocator);
-
+fn verify(bnd: BND3) !void {
     try std.testing.expect(std.mem.eql(u8, &bnd.header.magic, "BND3"));
     try std.testing.expect(bnd.header.bigEndian == 0 or bnd.header.bigEndian == 1);
     try std.testing.expect(bnd.header.bitBigEndian == 0 or bnd.header.bitBigEndian == 1);
-
-    try std.testing.expect(dcx.uncompressedBytes.len > 0);
+    try std.testing.expect(bnd.header.unk0F == 0);
+    try std.testing.expect(bnd.header.unk1C == 0);
 }
