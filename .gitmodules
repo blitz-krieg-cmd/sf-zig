@@ -1,0 +1,9 @@
+[submodule "SoulsTemplates"]
+	path = SoulsTemplates
+	url = https://github.com/JKAnderson/SoulsTemplates.git
+[submodule "SoulsFormats"]
+	path = SoulsFormats
+	url = https://github.com/JKAnderson/SoulsFormats.git
+[submodule "Paramdex"]
+	path = Paramdex
+	url = https://github.com/soulsmods/Paramdex.git
