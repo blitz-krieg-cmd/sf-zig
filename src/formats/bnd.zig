@@ -59,7 +59,7 @@ pub fn read(bytes: []const u8, allocator: std.mem.Allocator) !BND3 {
 
     var arrayList = std.ArrayList(BNDFile).init(allocator);
     var readFiles: i32 = 0;
-    while (readFiles < header.fileCount - 1) {
+    while (readFiles < header.fileCount) {
         const fileHeader = try reader.readStruct(File);
 
         if (fileHeader.compressedSize < 0) {
@@ -75,6 +75,16 @@ pub fn read(bytes: []const u8, allocator: std.mem.Allocator) !BND3 {
         readFiles += 1;
     }
 
+    var fileList = std.ArrayList(BNDFile).init(allocator);
+    for (arrayList.items) |value| {
+        try reader.context.seekTo(value.file.dataOffset);
+        const buffer = try allocator.alloc(u8, value.file.compressedSize);
+        defer allocator.free(buffer);
+        _ = try reader.read(buffer);
+
+        try fileList.append(.{ .file = value.file, .bytes = buffer });
+    }
+
     var endian: std.builtin.Endian = .little;
     if (header.bigEndian == 1 or header.rawFormat & BigEndian == 1) {
         endian = .big;
@@ -82,7 +92,7 @@ pub fn read(bytes: []const u8, allocator: std.mem.Allocator) !BND3 {
 
     const bnd: BND3 = .{
         .header = header,
-        .files = try arrayList.toOwnedSlice(),
+        .files = try fileList.toOwnedSlice(),
     };
 
     try verify(bnd);
