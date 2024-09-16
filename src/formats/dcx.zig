@@ -44,8 +44,6 @@ pub fn read(bytes: []const u8, allocator: std.mem.Allocator) !DCX {
         .uncompressedBytes = uncompressedBytes[0..],
     };
 
-    std.log.info("{any}", .{header});
-
     try verify(dcx);
 
     return dcx;

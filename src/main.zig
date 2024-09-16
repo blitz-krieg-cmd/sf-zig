@@ -40,7 +40,7 @@ pub fn main() !void {
     const dcx = try formats.ReadDCX(fileBytes, allocator);
     const bnd = try formats.ReadBND3(dcx.uncompressedBytes, allocator);
 
-    std.log.info("{s}", .{bnd.header.magic});
+    // std.log.info("{s}", .{bnd.header.magic});
     // std.log.info("{any}", .{bnd.files.len});
-    // std.log.info("{s}", .{bnd.files[0].bytes[0..4]});
+    std.log.info("{s}", .{bnd.files[1].bytes[0..]});
 }
