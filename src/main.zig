@@ -1,4 +1,5 @@
 const std = @import("std");
+
 const formats = @import("sf.zig");
 
 pub fn main() !void {
@@ -39,5 +40,7 @@ pub fn main() !void {
     const dcx = try formats.ReadDCX(fileBytes, allocator);
     const bnd = try formats.ReadBND3(dcx.uncompressedBytes, allocator);
 
-    std.log.info("{c}", .{bnd.header.magic});
+    std.log.info("{s}", .{bnd.header.magic});
+    // std.log.info("{any}", .{bnd.files.len});
+    // std.log.info("{s}", .{bnd.files[0].bytes[0..4]});
 }

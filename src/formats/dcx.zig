@@ -38,12 +38,13 @@ pub fn read(bytes: []const u8, allocator: std.mem.Allocator) !DCX {
 
     var dcp = std.compress.zlib.decompressor(reader);
     const uncompressedBytes = try dcp.reader().readAllAlloc(allocator, header.uncompressedSize);
-    errdefer allocator.free(uncompressedBytes);
 
     const dcx: DCX = .{
         .header = header,
         .uncompressedBytes = uncompressedBytes[0..],
     };
+
+    std.log.info("{any}", .{header});
 
     try verify(dcx);
 
@@ -52,10 +53,20 @@ pub fn read(bytes: []const u8, allocator: std.mem.Allocator) !DCX {
 
 fn verify(dcx: DCX) !void {
     try std.testing.expect(std.mem.eql(u8, &dcx.header.magic, "DCX\x00"));
-    try std.testing.expect(std.mem.eql(u8, &dcx.header.format, "DFLT"));
+    try std.testing.expect(std.mem.eql(u8, &dcx.header.format, "DFLT") or std.mem.eql(u8, &dcx.header.format, "EDGE") or std.mem.eql(u8, &dcx.header.format, "KRAK"));
     try std.testing.expect(std.mem.eql(u8, &dcx.header.dcs, "DCS\x00"));
     try std.testing.expect(std.mem.eql(u8, &dcx.header.dcp, "DCP\x00"));
     try std.testing.expect(std.mem.eql(u8, &dcx.header.dca, "DCA\x00"));
+
+    try std.testing.expect(dcx.header.unk30 == 6 or dcx.header.unk30 == 8 or dcx.header.unk30 == 9);
+    try std.testing.expect(dcx.header.unk31 == 0);
+    try std.testing.expect(dcx.header.unk32 == 0);
+    try std.testing.expect(dcx.header.unk33 == 0);
+
+    try std.testing.expect(dcx.header.unk34 == 0 or dcx.header.unk34 & 0x10000 == 1);
+
+    try std.testing.expect(dcx.header.unk38 == 0);
+    try std.testing.expect(dcx.header.unk3C == 0);
 
     try std.testing.expect(dcx.uncompressedBytes.len > 0);
 }
