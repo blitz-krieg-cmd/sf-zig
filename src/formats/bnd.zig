@@ -55,55 +55,6 @@ pub const BND3 = struct {
 pub fn read(bytes: []const u8, allocator: std.mem.Allocator) !BND3 {
     var fbs = std.io.fixedBufferStream(bytes);
     var reader = fbs.reader();
-    const header = try reader.readStruct(HEADER);
-
-    var arrayList = std.ArrayList(File).init(allocator);
-    defer arrayList.deinit();
-    var readFiles: i32 = 0;
-    while (readFiles < header.fileCount) {
-        const fileHeader = try reader.readStruct(File);
-
-        if (fileHeader.compressedSize < 0) {
-            continue;
-        }
-
-        // std.log.debug("Offset: {any} | Size: {any}", .{ fileHeader.dataOffset, fileHeader.compressedSize });
-        const file: File = fileHeader;
-        try arrayList.append(file);
-        readFiles += 1;
-    }
-
-    var fileList = std.ArrayList(BNDFile).init(allocator);
-    defer fileList.deinit();
-    for (arrayList.items) |value| {
-        try reader.context.seekTo(value.dataOffset);
-        const buffer = try allocator.alloc(u8, @intCast(value.compressedSize));
-        defer allocator.free(buffer);
-        const len = try reader.read(buffer);
-
-        try fileList.append(.{ .file = value, .bytes = buffer[0..len] });
-
-        // std.log.info("{b}", .{buffer});
-    }
-
-    var endian: std.builtin.Endian = .little;
-    if (header.bigEndian == 1 or header.rawFormat & BigEndian == 1) {
-        endian = .big;
-    }
-
-    const bnd: BND3 = .{
-        .header = header,
-        .files = try fileList.toOwnedSlice(),
-    };
-
-    try verify(bnd);
-
-    return bnd;
-}
-
-pub fn read2(bytes: []const u8, allocator: std.mem.Allocator) !BND3 {
-    var fbs = std.io.fixedBufferStream(bytes);
-    var reader = fbs.reader();
     const bndHeader = try reader.readStruct(HEADER);
 
     var headerList = try allocator.alloc(BNDFile, @intCast(bndHeader.fileCount));
